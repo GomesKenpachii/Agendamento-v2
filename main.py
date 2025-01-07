@@ -23,7 +23,7 @@ if file_path is not None:
 
     # Montar DataFrame com os agendamentos
     df_agendamentos = montar_dataframe_agendamentos(turmas, jovens_nao_alocados)
-
+    
     # Calcular totais
     total_jovens = len(nomes_unicos)
     total_jovens_alocados = total_jovens - len(jovens_nao_alocados)
