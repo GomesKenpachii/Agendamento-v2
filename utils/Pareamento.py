@@ -45,10 +45,8 @@ def montar_dataframe_agendamentos(turmas, jovens_nao_alocados):
     for k in agendamentos_dict.keys():
         agendamentos_dict[k].extend([None] * (max_len - len(agendamentos_dict[k])))
     
-    # Ordenar as colunas por data e horário
-    colunas_ordenadas = sorted(agendamentos_dict.keys(), key=lambda x: (pd.to_datetime(x.split(' - ')[1], dayfirst=True), pd.to_datetime(x.split(' - ')[0], format='%Hh')))
-    
-    df_agendamentos = pd.DataFrame({col: agendamentos_dict[col] for col in colunas_ordenadas})
+   
+    df_agendamentos = pd.DataFrame({col: agendamentos_dict[col] for col in agendamentos_dict})
     
     # Adicionar a coluna de jovens não alocados
     df_agendamentos['Não Alocados'] = pd.Series(jovens_nao_alocados + [None] * (max_len - len(jovens_nao_alocados)))
