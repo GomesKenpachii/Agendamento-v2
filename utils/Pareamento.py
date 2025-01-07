@@ -6,7 +6,10 @@ def criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_
     jovens_alocados = set()
     jovens_nao_alocados = set()
     
-    for horario, dias in disponibilidade_pessoas.items():
+    # Ordenar pessoas por disponibilidade (menos disponíveis primeiro)
+    disponibilidade_ordenada = sorted(disponibilidade_pessoas.items(), key=lambda x: len(x[1]))
+    
+    for horario, dias in disponibilidade_ordenada:
         for dia, pessoas in dias.items():
             pessoas_disponiveis = [pessoa for pessoa in pessoas if pessoa not in jovens_alocados]
             for i in range(0, len(pessoas_disponiveis), max_pessoas_por_turma):
@@ -42,7 +45,10 @@ def montar_dataframe_agendamentos(turmas, jovens_nao_alocados):
     for k in agendamentos_dict.keys():
         agendamentos_dict[k].extend([None] * (max_len - len(agendamentos_dict[k])))
     
-    df_agendamentos = pd.DataFrame(agendamentos_dict)
+    # Ordenar as colunas por data e horário
+    colunas_ordenadas = sorted(agendamentos_dict.keys(), key=lambda x: (pd.to_datetime(x.split(' - ')[1], dayfirst=True), pd.to_datetime(x.split(' - ')[0], format='%Hh')))
+    
+    df_agendamentos = pd.DataFrame({col: agendamentos_dict[col] for col in colunas_ordenadas})
     
     # Adicionar a coluna de jovens não alocados
     df_agendamentos['Não Alocados'] = pd.Series(jovens_nao_alocados + [None] * (max_len - len(jovens_nao_alocados)))
