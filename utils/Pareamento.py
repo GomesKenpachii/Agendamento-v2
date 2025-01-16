@@ -1,6 +1,23 @@
 from collections import defaultdict
 import pandas as pd
 
+def processar_disponibilidade(data):
+    disponibilidade_pessoas = defaultdict(lambda: defaultdict(list))
+    linhas = data.strip().split('\n')
+    dias = linhas[0].split('\t')[1:]
+    
+    for linha in linhas[1:]:
+        partes = linha.split('\t')
+        nome = partes[0]
+        horarios = partes[1:]
+        
+        for dia, horario in zip(dias, horarios):
+            if horario:
+                for h in horario.split(', '):
+                    disponibilidade_pessoas[dia][h].append(nome)
+    
+    return disponibilidade_pessoas
+
 def criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_horario, min_pessoas_por_turma):
     turmas = defaultdict(list)
     jovens_alocados = set()

@@ -18,5 +18,9 @@ def import_csv(file_path):
                 horarios_list = horarios_disponiveis.split(', ')
                 for horario in horarios_list:
                     disponibilidade_pessoas[horarios[i].strip()][horario.strip()].append(pessoa)
+                    segundas_chaves = set()
+                    for sub_dict in disponibilidade_pessoas.values():
+                        segundas_chaves.update(sub_dict.keys()) 
+                    segundas_chaves = sorted(segundas_chaves, key=lambda x: int(x.split('h')[0]))
     
-    return disponibilidade_pessoas, list(nomes_unicos)
+    return disponibilidade_pessoas, list(nomes_unicos),segundas_chaves

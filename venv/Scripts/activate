@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="D:\rafam\Documents\Pastas\Semear\Agendamento de horario\Agendamento v2\venv"
+VIRTUAL_ENV="D:\rafam\Documents\Pastas\Semear\Agendamento de horario\Agendamento v2\Agendamento-v2\venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

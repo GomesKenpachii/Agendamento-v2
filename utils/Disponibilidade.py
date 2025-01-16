@@ -1,34 +1,33 @@
 import pandas as pd
 import streamlit as st
 
-def disponibilidade(dias_da_semana):
-    horarios = [f'{hora:02d}h - {hora+1:02d}h' for hora in range(8, 20)]
+def disponibilidade(datas_disponiveis, horarios):
+    selected_times = {data: [] for data in datas_disponiveis}  # Inicializa com listas vazias
+    dias = datas_disponiveis
+    dias_selecionados = st.multiselect("Selecione os dias disponíveis:", dias, default=dias)
     
-    disponibilidade_dict = {dia: horarios for dia in dias_da_semana}
-    
-    disponibilidade_df = pd.DataFrame.from_dict(disponibilidade_dict, orient='index').transpose()
-    
-    return disponibilidade_df
-
-def selecionar_horarios(disponibilidade_df):
-    selected_times = {}
+    if not dias_selecionados:
+        st.warning("Selecione pelo menos um dia.")
+        return None
 
     # Criar a matriz de checkboxes
     st.write("Horários disponíveis:")
-    cols = st.columns(len(disponibilidade_df.columns) + 1)
 
-    # Primeira linha com os dias da semana
-    cols[0].write("Horários")
-    for i, dia in enumerate(disponibilidade_df.columns):
-        cols[i + 1].write(dia)
+    # Ajuste para usar toda a largura disponível
+    cols = st.columns(len(dias_selecionados) + 1, gap="small")
+
+    # Primeira linha com as datas
+    cols[0].write("horas")
+    for i, data in enumerate(dias_selecionados):
+        cols[i + 1].write(data)
 
     # Preencher a matriz com checkboxes
-    for i, horario in enumerate(disponibilidade_df.iloc[:, 0].dropna()):
-        cols[0].write(horario)
-        for j, dia in enumerate(disponibilidade_df.columns):
-            if dia not in selected_times:
-                selected_times[dia] = []
-            if cols[j + 1].checkbox("", key=f"{dia}-{horario}"):
-                selected_times[dia].append(horario)
+    for i, horario in enumerate(horarios):
+        # Exibir apenas a primeira hora para o usuário
+        primeira_hora = horario.split(' - ')[0]
+        cols[0].write(primeira_hora)
+        for j, data in enumerate(dias_selecionados):
+            if cols[j + 1].checkbox("", key=f"{data}-{horario}"):
+                selected_times[data].append(horario)
 
     return selected_times
