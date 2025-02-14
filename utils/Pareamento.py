@@ -28,11 +28,13 @@ def criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_
     
     for horario, dias in disponibilidade_ordenada:
         for dia, pessoas in dias.items():
-            pessoas_disponiveis = [pessoa for pessoa in pessoas if jovens_alocados[pessoa] < max_pareamentos_por_pessoa]
+            # Combine the lists, prioritizing non-allocated people and then by availability
+            pessoas_disponiveis = sorted(pessoas, key=lambda p: (jovens_alocados[p], sum(len(disponibilidade_pessoas[d][h]) for d in disponibilidade_pessoas for h in disponibilidade_pessoas[d] if p in disponibilidade_pessoas[d][h])))
+            
             for i in range(0, len(pessoas_disponiveis), max_pessoas_por_turma):
                 if len(turmas[f"{dia} - {horario}"]) >= max_turmas_por_horario:
                     break
-                turma = pessoas_disponiveis[i:i + max_pessoas_por_turma]
+                turma = [pessoa for pessoa in pessoas_disponiveis[i:i + max_pessoas_por_turma] if jovens_alocados[pessoa] < max_pareamentos_por_pessoa]
                 if len(turma) >= min_pessoas_por_turma:
                     turmas[f"{dia} - {horario}"].append(turma)
                     for pessoa in turma:
