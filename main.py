@@ -12,9 +12,7 @@ if file_path is not None:
 
     # Obter os horários selecionados
     datas_disponiveis = disponibilidade_pessoas.keys()
-   
-    horarios_selecionados = disponibilidade(datas_disponiveis,segundas_chaves)
-
+    horarios_selecionados = disponibilidade(datas_disponiveis, segundas_chaves)
 
     if horarios_selecionados is not None:
         # Definir o número máximo de pessoas por turma
@@ -26,7 +24,9 @@ if file_path is not None:
         # Definir a quantidade mínima de pessoas por turma
         min_pessoas_por_turma = st.number_input("Quantidade mínima de pessoas por turma", min_value=1, value=15)
 
-       
+        # Definir o número máximo de vezes que uma pessoa pode ser pareada em uma turma
+        max_pareamentos_por_pessoa = st.number_input("Número máximo de vezes que uma pessoa pode ser pareada", min_value=1, value=1)
+
         for dia, horarios in horarios_selecionados.items():
             if dia in disponibilidade_pessoas:
                 for horario in horarios:
@@ -38,16 +38,8 @@ if file_path is not None:
                 if not disponibilidade_pessoas[dia]:
                     del disponibilidade_pessoas[dia]
 
-        
-       
-
-                    
-                    
-        
-        
-        
         # Criar turmas
-        turmas, jovens_nao_alocados = criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_horario, min_pessoas_por_turma)
+        turmas, jovens_nao_alocados = criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_horario, min_pessoas_por_turma, max_pareamentos_por_pessoa)
 
         # Montar DataFrame com os agendamentos
         df_agendamentos = montar_dataframe_agendamentos(turmas, jovens_nao_alocados)

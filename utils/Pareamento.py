@@ -18,9 +18,9 @@ def processar_disponibilidade(data):
     
     return disponibilidade_pessoas
 
-def criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_horario, min_pessoas_por_turma):
+def criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_horario, min_pessoas_por_turma, max_pareamentos_por_pessoa):
     turmas = defaultdict(list)
-    jovens_alocados = set()
+    jovens_alocados = defaultdict(int)  # Track the number of times each person is allocated
     jovens_nao_alocados = set()
     
     # Ordenar pessoas por disponibilidade (menos disponíveis primeiro)
@@ -28,20 +28,21 @@ def criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_
     
     for horario, dias in disponibilidade_ordenada:
         for dia, pessoas in dias.items():
-            pessoas_disponiveis = [pessoa for pessoa in pessoas if pessoa not in jovens_alocados]
+            pessoas_disponiveis = [pessoa for pessoa in pessoas if jovens_alocados[pessoa] < max_pareamentos_por_pessoa]
             for i in range(0, len(pessoas_disponiveis), max_pessoas_por_turma):
                 if len(turmas[f"{dia} - {horario}"]) >= max_turmas_por_horario:
                     break
                 turma = pessoas_disponiveis[i:i + max_pessoas_por_turma]
                 if len(turma) >= min_pessoas_por_turma:
                     turmas[f"{dia} - {horario}"].append(turma)
-                    jovens_alocados.update(turma)
+                    for pessoa in turma:
+                        jovens_alocados[pessoa] += 1
     
     # Identificar jovens não alocados
     for dias in disponibilidade_pessoas.values():
         for pessoas in dias.values():
             for pessoa in pessoas:
-                if pessoa not in jovens_alocados:
+                if jovens_alocados[pessoa] == 0:
                     jovens_nao_alocados.add(pessoa)
     
     return turmas, list(jovens_nao_alocados)
