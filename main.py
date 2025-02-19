@@ -6,10 +6,10 @@ import streamlit as st
 file_path = st.file_uploader("Selecione o arquivo CSV", type="csv")
 
 if file_path is not None:
-    disponibilidade_pessoas, nomes_unicos, segundas_chaves = import_csv(file_path)
+    disponibilidade_pessoas, nomes_unicos, segundas_chaves,max_pareamentos_individual = import_csv(file_path)
 
     st.title("Configuração do agendamento")
-
+    
     # Obter os horários selecionados
     datas_disponiveis = disponibilidade_pessoas.keys()
     horarios_selecionados = disponibilidade(datas_disponiveis, segundas_chaves)
@@ -25,8 +25,8 @@ if file_path is not None:
         min_pessoas_por_turma = st.number_input("Quantidade mínima de pessoas por turma", min_value=1, value=15)
 
         # Definir o número máximo de vezes que uma pessoa pode ser pareada em uma turma
-        max_pareamentos_por_pessoa = st.number_input("Número máximo de vezes que uma pessoa pode ser pareada", min_value=1, value=1)
-
+        max_pareamentos_por_pessoa = st.number_input("Defina o número máximo de vezes que uma pessoa pode ser pareada: (Se definido como 1000, será usada a quantidade de disponibilidades informadas pela pessoa; caso contrário, será utilizado o valor especificado abaixo.)", min_value=1, value=1)
+    
         for dia, horarios in horarios_selecionados.items():
             if dia in disponibilidade_pessoas:
                 for horario in horarios:
@@ -39,8 +39,8 @@ if file_path is not None:
                     del disponibilidade_pessoas[dia]
 
         # Criar turmas
-        turmas, jovens_nao_alocados = criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_horario, min_pessoas_por_turma, max_pareamentos_por_pessoa)
-
+        turmas, jovens_nao_alocados, pessoas_disponiveis = criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_horario, min_pessoas_por_turma,max_pareamentos_por_pessoa, max_pareamentos_individual)
+        
         # Montar DataFrame com os agendamentos
         df_agendamentos = montar_dataframe_agendamentos(turmas, jovens_nao_alocados)
         
@@ -57,6 +57,7 @@ if file_path is not None:
         st.write(f"Total de jovens: {total_jovens}")
         st.write(f"Total de jovens alocados: {total_jovens_alocados}")
         st.write(f"Total de jovens não alocados: {total_jovens_nao_alocados}")
+        
     else:
         st.write("Nenhum horário selecionado.")
 else:
