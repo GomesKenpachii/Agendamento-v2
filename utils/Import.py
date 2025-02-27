@@ -1,6 +1,7 @@
 import pandas as pd
 from collections import defaultdict
 
+
 def extrair_hora(chave):
     """
     Extrai a hora inicial de um intervalo no formato '9h - 12h'.
@@ -15,10 +16,22 @@ def extrair_hora(chave):
     except Exception:
         return 0
 
+def extrair_intervalo(preferencia):
+    """
+    Extrai o intervalo de tempo da preferência de turno no formato 'Fim da Tarde (16h30 às 19h30)'.
+    Converte para o formato '16h30 - 19h30'.
+    """
+    if '(' in preferencia and ')' in preferencia:
+        intervalo = preferencia.split('(')[1].split(')')[0].strip()
+        return intervalo.replace(' às ', ' - ')
+    return preferencia.strip().replace(' às ', ' - ')
+
 def import_csv(file_path):
     disponibilidade_pessoas = defaultdict(lambda: defaultdict(list))
     nomes_unicos = set()
     max_pareamentos_individual = {}
+    preferencia_turno = {}
+    preferencia_frequencia = {}
     bd = pd.read_csv(file_path, sep=',', encoding='utf-8')
     
     # Considerando que os horários começam a partir da 5ª coluna
@@ -28,6 +41,8 @@ def import_csv(file_path):
         pessoa = row[0]
         nomes_unicos.add(pessoa)
         max_pareamentos_individual[pessoa] = int(row[1])  # Extrair o valor da coluna específica
+        preferencia_turno[pessoa] = extrair_intervalo(row[3])
+        preferencia_frequencia[pessoa]=row[2]  # Extrair e limpar a preferência de turno
         disponibilidade = row[4:]
         for i, horarios_disponiveis in enumerate(disponibilidade):
             if pd.notna(horarios_disponiveis) and horarios_disponiveis.strip():
@@ -48,4 +63,4 @@ def import_csv(file_path):
         key=extrair_hora
     )
     
-    return disponibilidade_pessoas, list(nomes_unicos), segundas_chaves, max_pareamentos_individual
+    return disponibilidade_pessoas, list(nomes_unicos), segundas_chaves, max_pareamentos_individual, preferencia_turno,preferencia_frequencia
