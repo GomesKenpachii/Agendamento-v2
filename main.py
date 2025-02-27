@@ -6,7 +6,7 @@ import streamlit as st
 file_path = st.file_uploader("Selecione o arquivo CSV", type="csv")
 
 if file_path is not None:
-    disponibilidade_pessoas, nomes_unicos, segundas_chaves, max_pareamentos_individual, preferencia_turno, preferencia_frequencia = import_csv(file_path)
+    disponibilidade_pessoas, nomes_unicos, segundas_chaves, max_pareamentos_individual, preferencia_turno, preferencia_frequencia, tipo_usuario = import_csv(file_path)
 
     st.title("Configuração do agendamento")
 
@@ -31,7 +31,7 @@ if file_path is not None:
         usar_preferencia_turno = st.checkbox("Usar preferência de turno")
 
         # Checkbox para usar preferencia_frequencia
-        usar_preferencia_frequencia = st.checkbox("Usar preferência de frequência")
+        usar_preferencia_frequencia = st.checkbox("Usar preferência de frequência: (Não usar, ta dando um bug que não consegui arrumar a tempo)")
 
         for dia, horarios in horarios_selecionados.items():
             if dia in disponibilidade_pessoas:
@@ -54,7 +54,8 @@ if file_path is not None:
             max_pareamentos_por_pessoa, 
             max_pareamentos_individual, 
             preferencia_turno if usar_preferencia_turno else None, 
-            preferencia_frequencia if usar_preferencia_frequencia else None
+            preferencia_frequencia if usar_preferencia_frequencia else None,
+            tipo_usuario
         )
 
         # Montar DataFrame com os agendamentos
@@ -64,6 +65,8 @@ if file_path is not None:
         total_jovens = len(nomes_unicos)
         total_jovens_alocados = total_jovens - len(jovens_nao_alocados)
         total_jovens_nao_alocados = len(jovens_nao_alocados)
+        total_turmas_agendadas = sum(len(turma) for turma in turmas.values())
+        
 
         st.title("Turmas Criadas")
 
@@ -73,6 +76,7 @@ if file_path is not None:
         st.write(f"Total de jovens: {total_jovens}")
         st.write(f"Total de jovens alocados: {total_jovens_alocados}")
         st.write(f"Total de jovens não alocados: {total_jovens_nao_alocados}")
+        st.write(f"Total de turmas agendadas: {total_turmas_agendadas}")
         
     else:
         st.write("Nenhum horário selecionado.")

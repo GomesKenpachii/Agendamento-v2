@@ -32,18 +32,20 @@ def import_csv(file_path):
     max_pareamentos_individual = {}
     preferencia_turno = {}
     preferencia_frequencia = {}
+    tipo_usuario = {}
     bd = pd.read_csv(file_path, sep=',', encoding='utf-8')
     
     # Considerando que os horários começam a partir da 5ª coluna
-    horarios = bd.columns[4:]
+    horarios = bd.columns[5:]
     
     for index, row in bd.iterrows():
         pessoa = row[0]
         nomes_unicos.add(pessoa)
-        max_pareamentos_individual[pessoa] = int(row[1])  # Extrair o valor da coluna específica
-        preferencia_turno[pessoa] = extrair_intervalo(row[3])
-        preferencia_frequencia[pessoa]=row[2]  # Extrair e limpar a preferência de turno
-        disponibilidade = row[4:]
+        max_pareamentos_individual[pessoa] = int(row[2])  # Extrair o valor da coluna específica
+        preferencia_turno[pessoa] = extrair_intervalo(row[4])
+        preferencia_frequencia[pessoa] = row[3]  # Extrair e limpar a preferência de turno
+        tipo_usuario[pessoa] = row[1]
+        disponibilidade = row[5:]
         for i, horarios_disponiveis in enumerate(disponibilidade):
             if pd.notna(horarios_disponiveis) and horarios_disponiveis.strip():
                 # Separa os intervalos de tempo (removendo espaços extras)
@@ -63,4 +65,4 @@ def import_csv(file_path):
         key=extrair_hora
     )
     
-    return disponibilidade_pessoas, list(nomes_unicos), segundas_chaves, max_pareamentos_individual, preferencia_turno,preferencia_frequencia
+    return disponibilidade_pessoas, list(nomes_unicos), segundas_chaves, max_pareamentos_individual, preferencia_turno, preferencia_frequencia, tipo_usuario

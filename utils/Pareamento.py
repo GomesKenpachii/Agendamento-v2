@@ -2,91 +2,147 @@ from collections import defaultdict
 import pandas as pd
 from utils.Import import extrair_hora
 
-def criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_horario, min_pessoas_por_turma, max_pareamentos_por_pessoa, max_pareamentos_individual, preferencia_turno, preferencia_frequencia):
+def criar_turmas(disponibilidade_pessoas, 
+                 max_pessoas_por_turma, 
+                 max_turmas_por_horario, 
+                 min_pessoas_por_turma, 
+                 max_pareamentos_por_pessoa, 
+                 max_pareamentos_individual, 
+                 preferencia_turno, 
+                 preferencia_frequencia, 
+                 tipo_usuario):
+    """
+    Cria turmas a partir da disponibilidade, garantindo:
+      - Cada turma tem pelo menos 3 Mentores e 1 Jovem-Semente Veterano/Time Administrativo Semear.
+      - Cada pessoa não excede o limite de pareamentos.
+      - Se definido, respeita a preferência de turno e frequência.
+    """
     turmas = defaultdict(list)
-    jovens_alocados = defaultdict(int)  # Track the number of times each person is allocated
-    jovens_nao_alocados = set()
-    pessoas_disponiveis = set()
+    alocacoes = defaultdict(int)  # Número de pareamentos de cada pessoa
+    nao_alocados = set()
+    pessoas_disponiveis_global = set()
     
     print("Iniciando a criação de turmas...")
-    
-    # Ordenar pessoas por disponibilidade (menos disponíveis primeiro)
-    disponibilidade_ordenada = sorted(disponibilidade_pessoas.items(), key=lambda x: len(x[1]))
-    print(f"Disponibilidade ordenada: {disponibilidade_ordenada}")
-    
-    for dia, horarios in disponibilidade_ordenada:
-        print(f"Processando dia: {dia}")
-        for horario, pessoas in horarios.items():
-            print(f"Processando horário: {horario} com pessoas: {pessoas}")
-            # Combine the lists, prioritizing non-allocated people and then by availability
-            pessoas_disponiveis.update(pessoas)
-            pessoas_disponiveis_ordenadas = sorted(pessoas, key=lambda p: (jovens_alocados[p], sum(len(disponibilidade_pessoas[d][h]) for d in disponibilidade_pessoas for h in disponibilidade_pessoas[d] if p in disponibilidade_pessoas[d][h])))
-            
-            for i in range(0, len(pessoas_disponiveis_ordenadas), max_pessoas_por_turma):
-                if len(turmas[f"{dia} - {horario}"]) >= max_turmas_por_horario:
-                    break
-                if preferencia_turno:
-                    turma = [pessoa for pessoa in pessoas_disponiveis_ordenadas[i:i + max_pessoas_por_turma] if jovens_alocados[pessoa] < (max_pareamentos_individual[pessoa] if max_pareamentos_por_pessoa == 0 else max_pareamentos_por_pessoa) and preferencia_turno[pessoa] in horario]
-                else:
-                    turma = [pessoa for pessoa in pessoas_disponiveis_ordenadas[i:i + max_pessoas_por_turma] if jovens_alocados[pessoa] < (max_pareamentos_individual[pessoa] if max_pareamentos_por_pessoa == 0 else max_pareamentos_por_pessoa)]
-                if len(turma) >= min_pessoas_por_turma:
-                    turmas[f"{dia} - {horario}"].append(turma)
-                    for pessoa in turma:
-                        jovens_alocados[pessoa] += 1
-                        print(f"Alocando {pessoa} em {dia} - {horario}")
-    
-    # Priorizar alocação no horário seguinte para "Duas dinâmicas seguidas no mesmo dia"
-    if preferencia_frequencia:
-        for dia, horarios in disponibilidade_ordenada:
-            for horario, pessoas in horarios.items():
-                for pessoa in pessoas:
-                    if preferencia_frequencia[pessoa] == "Duas dinâmicas seguidas no mesmo dia" and jovens_alocados[pessoa] > 0:
-                        # Encontrar o próximo horário
-                        horarios_list = sorted(horarios.keys(), key=extrair_hora)
-                        indice_horario = horarios_list.index(horario)
-                        if indice_horario + 1 < len(horarios_list):
-                            proximo_horario = horarios_list[indice_horario + 1]
-                            if pessoa in disponibilidade_pessoas[dia][proximo_horario]:
-                                if len(turmas[f"{dia} - {proximo_horario}"]) < max_turmas_por_horario:
-                                    # Verificar se a turma atual tem o número mínimo de pessoas
-                                    if turmas[f"{dia} - {horario}"] and len(turmas[f"{dia} - {horario}"][-1]) >= min_pessoas_por_turma:
-                                        turmas[f"{dia} - {proximo_horario}"].append([pessoa])
-                                        jovens_alocados[pessoa] += 1
-                                        print(f"Alocando {pessoa} em {dia} - {proximo_horario} para duas dinâmicas seguidas")
-    
-    # Identificar jovens não alocados
-    for pessoa in pessoas_disponiveis:
-        if jovens_alocados[pessoa] == 0:
-            jovens_nao_alocados.add(pessoa)
-    
-    print(f"Turmas: {turmas}")
-    print(f"Jovens não alocados: {jovens_nao_alocados}")
-    print(f"Pessoas disponíveis: {pessoas_disponiveis}")
-    
-    return turmas, list(jovens_nao_alocados), list(pessoas_disponiveis)
 
-def montar_dataframe_agendamentos(turmas, jovens_nao_alocados):
-    # Criar um DataFrame com os agendamentos
+    # Para cada dia e horário, processa os participantes disponíveis
+    for dia, horarios in disponibilidade_pessoas.items():
+        for horario, pessoas in horarios.items():
+            chave = f"{dia} - {horario}"
+            pessoas_disponiveis_global.update(pessoas)
+            
+            # Filtrar os participantes que ainda não atingiram seu limite de pareamentos
+            # e, se houver, que atendam à preferência de turno
+            pessoas_filtradas = []
+            for p in pessoas:
+                limite = max_pareamentos_por_pessoa if max_pareamentos_por_pessoa != 0 else max_pareamentos_individual[p]
+                if alocacoes[p] < limite:
+                    if preferencia_turno:
+                        # Considera o turno apenas se o preferido estiver presente no horário
+                        if preferencia_turno.get(p) and preferencia_turno[p] in horario:
+                            pessoas_filtradas.append(p)
+                    else:
+                        pessoas_filtradas.append(p)
+            
+            # Separar os participantes filtrados por tipo
+            mentores = [p for p in pessoas_filtradas if tipo_usuario[p] == "Mentor(a)"]
+            veteranos = [p for p in pessoas_filtradas if tipo_usuario[p] in ["Jovem-Semente Veterano", "Time Administrativo Semear"]]
+            outros = [p for p in pessoas_filtradas if tipo_usuario[p] not in ["Mentor(a)", "Jovem-Semente Veterano", "Time Administrativo Semear"]]
+            
+            # Ordenar cada grupo priorizando os com menos alocações
+            mentores.sort(key=lambda p: alocacoes[p])
+            veteranos.sort(key=lambda p: alocacoes[p])
+            outros.sort(key=lambda p: alocacoes[p])
+            
+            # Enquanto for possível formar uma turma e não exceder o limite de turmas para o horário,
+            # forma um grupo garantindo os critérios mínimos
+            while len(mentores) >= 3 and len(veteranos) >= 1 and len(turmas[chave]) < max_turmas_por_horario:
+                grupo = []
+                # Retira 3 mentores (sempre verificando o limite de pessoas)
+                for _ in range(3):
+                    if len(grupo) < max_pessoas_por_turma and mentores:
+                        grupo.append(mentores.pop(0))
+                
+                # Retira 1 veterano, se houver espaço
+                if len(grupo) < max_pessoas_por_turma and veteranos:
+                    grupo.append(veteranos.pop(0))
+                
+                # Preenche a turma até o limite máximo, priorizando: mentores, veteranos e, por fim, outros
+                while len(grupo) < max_pessoas_por_turma:
+                    if outros:   
+                        grupo.append(outros.pop(0))
+                    elif veteranos:
+                        grupo.append(veteranos.pop(0))
+                    elif mentores:
+                        grupo.append(mentores.pop(0))
+                    else:
+                        break
+                
+                # Se a turma atingir o tamanho mínimo exigido, a adiciona e atualiza as alocações
+                if len(grupo) >= min_pessoas_por_turma:
+                    turmas[chave].append(grupo)
+                    for p in grupo:
+                        alocacoes[p] += 1
+                        print(f"Alocando {p} em {chave}")
+                else:
+                    # Caso não seja possível formar uma turma com o mínimo exigido, interrompe tentativas para este horário
+                    break
+
+    # Alocação para "Duas dinâmicas seguidas no mesmo dia"
+    if preferencia_frequencia:
+        for dia, horarios in disponibilidade_pessoas.items():
+            # Ordena os horários do dia (supondo formato "HH:MM")
+            horarios_ordenados = sorted(horarios.keys(), key=extrair_hora)
+            for idx, horario in enumerate(horarios_ordenados):
+                proximo_horario = horarios_ordenados[idx + 1] if idx + 1 < len(horarios_ordenados) else None
+                if not proximo_horario:
+                    continue
+                chave_proximo = f"{dia} - {proximo_horario}"
+                # Para cada pessoa com preferência por duas dinâmicas seguidas,
+                # tenta alocá-la no próximo horário se ela estiver disponível
+                for pessoa in horarios[horario]:
+                    if preferencia_frequencia.get(pessoa) == "Duas dinâmicas seguidas no mesmo dia" and alocacoes[pessoa] > 0:
+                        if pessoa in disponibilidade_pessoas[dia].get(proximo_horario, []):
+                            # Tenta adicionar à última turma do próximo horário, se não estiver cheia
+                            if turmas[chave_proximo]:
+                                ultima_turma = turmas[chave_proximo][-1]
+                                if len(ultima_turma) < max_pessoas_por_turma:
+                                    ultima_turma.append(pessoa)
+                                    alocacoes[pessoa] += 1
+                                    print(f"Adicionando {pessoa} à turma existente em {chave_proximo} para duas dinâmicas seguidas")
+                                    continue
+                            # Caso não haja turma ou a última esteja cheia, cria uma nova turma, se houver espaço
+                            if len(turmas[chave_proximo]) < max_turmas_por_horario:
+                                turmas[chave_proximo].append([pessoa])
+                                alocacoes[pessoa] += 1
+                                print(f"Criando nova turma para {pessoa} em {chave_proximo} para duas dinâmicas seguidas")
+    
+    # Identificar participantes que não foram alocados em nenhuma turma
+    for pessoa in pessoas_disponiveis_global:
+        if alocacoes[pessoa] == 0:
+            nao_alocados.add(pessoa)
+    
+    print(f"Turmas formadas: {dict(turmas)}")
+    print(f"Pessoas não alocadas: {nao_alocados}")
+    
+    return turmas, list(nao_alocados), list(pessoas_disponiveis_global)
+
+def montar_dataframe_agendamentos(turmas, nao_alocados):
+    """
+    Cria um DataFrame dos agendamentos, organizando as turmas por horário/dia e listando os não alocados.
+    """
     agendamentos_dict = defaultdict(list)
-    
-    for horario_dia, lista_turmas in turmas.items():
+    for chave, lista_turmas in turmas.items():
         for turma in lista_turmas:
-            agendamentos_dict[horario_dia].extend(turma)
+            agendamentos_dict[chave].extend(turma)
     
-    # Encontrar o comprimento máximo das colunas
-    if agendamentos_dict:
-        max_len = max(len(col) for col in agendamentos_dict.values())
-    else:
-        max_len = 0
-    max_len = max(max_len, len(jovens_nao_alocados))
+    # Define o comprimento máximo para alinhar as colunas
+    max_len = max([len(val) for val in agendamentos_dict.values()] + [len(nao_alocados)])
     
-    # Preencher as colunas com None para garantir que todas tenham o mesmo comprimento
-    for k in agendamentos_dict.keys():
-        agendamentos_dict[k].extend([None] * (max_len - len(agendamentos_dict[k])))
+    # Preenche cada coluna com None para que todas tenham o mesmo tamanho
+    for chave in agendamentos_dict:
+        agendamentos_dict[chave].extend([None] * (max_len - len(agendamentos_dict[chave])))
     
     df_agendamentos = pd.DataFrame({col: agendamentos_dict[col] for col in agendamentos_dict})
-    
-    # Adicionar a coluna de jovens não alocados
-    df_agendamentos['Não Alocados'] = pd.Series(jovens_nao_alocados + [None] * (max_len - len(jovens_nao_alocados)))
+    df_agendamentos['Não Alocados'] = pd.Series(nao_alocados + [None] * (max_len - len(nao_alocados)))
     
     return df_agendamentos
