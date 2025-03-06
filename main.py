@@ -31,7 +31,10 @@ if file_path is not None:
         usar_preferencia_turno = st.checkbox("Usar preferência de turno")
 
         # Checkbox para usar preferencia_frequencia
-        usar_preferencia_frequencia = st.checkbox("Usar preferência de frequência: (Não usar, ta dando um bug que não consegui arrumar a tempo)")
+        usar_preferencia_frequencia = st.checkbox("Usar preferência de frequência")
+
+        # Checkbox para usar tipo_usuario
+        usar_tipo_usuario = st.checkbox("Usar tipo de usuário")
 
         for dia, horarios in horarios_selecionados.items():
             if dia in disponibilidade_pessoas:
@@ -55,7 +58,7 @@ if file_path is not None:
             max_pareamentos_individual, 
             preferencia_turno if usar_preferencia_turno else None, 
             preferencia_frequencia if usar_preferencia_frequencia else None,
-            tipo_usuario
+            tipo_usuario if usar_tipo_usuario else None
         )
 
         # Montar DataFrame com os agendamentos
@@ -66,7 +69,6 @@ if file_path is not None:
         total_jovens_alocados = total_jovens - len(jovens_nao_alocados)
         total_jovens_nao_alocados = len(jovens_nao_alocados)
         total_turmas_agendadas = sum(len(turma) for turma in turmas.values())
-        
 
         st.title("Turmas Criadas")
 

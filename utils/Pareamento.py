@@ -2,15 +2,7 @@ from collections import defaultdict
 import pandas as pd
 from utils.Import import extrair_hora
 
-def criar_turmas(disponibilidade_pessoas, 
-                 max_pessoas_por_turma, 
-                 max_turmas_por_horario, 
-                 min_pessoas_por_turma, 
-                 max_pareamentos_por_pessoa, 
-                 max_pareamentos_individual, 
-                 preferencia_turno, 
-                 preferencia_frequencia, 
-                 tipo_usuario):
+def criar_turmas(disponibilidade_pessoas, max_pessoas_por_turma, max_turmas_por_horario, min_pessoas_por_turma, max_pareamentos_por_pessoa, max_pareamentos_individual, preferencia_turno, preferencia_frequencia, tipo_usuario):
     """
     Cria turmas a partir da disponibilidade, garantindo:
       - Cada turma tem pelo menos 3 Mentores e 1 Jovem-Semente Veterano/Time Administrativo Semear.
@@ -43,49 +35,59 @@ def criar_turmas(disponibilidade_pessoas,
                     else:
                         pessoas_filtradas.append(p)
             
-            # Separar os participantes filtrados por tipo
-            mentores = [p for p in pessoas_filtradas if tipo_usuario[p] == "Mentor(a)"]
-            veteranos = [p for p in pessoas_filtradas if tipo_usuario[p] in ["Jovem-Semente Veterano", "Time Administrativo Semear"]]
-            outros = [p for p in pessoas_filtradas if tipo_usuario[p] not in ["Mentor(a)", "Jovem-Semente Veterano", "Time Administrativo Semear"]]
-            
-            # Ordenar cada grupo priorizando os com menos alocações
-            mentores.sort(key=lambda p: alocacoes[p])
-            veteranos.sort(key=lambda p: alocacoes[p])
-            outros.sort(key=lambda p: alocacoes[p])
-            
-            # Enquanto for possível formar uma turma e não exceder o limite de turmas para o horário,
-            # forma um grupo garantindo os critérios mínimos
-            while len(mentores) >= 3 and len(veteranos) >= 1 and len(turmas[chave]) < max_turmas_por_horario:
-                grupo = []
-                # Retira 3 mentores (sempre verificando o limite de pessoas)
-                for _ in range(3):
-                    if len(grupo) < max_pessoas_por_turma and mentores:
-                        grupo.append(mentores.pop(0))
+            if tipo_usuario:
+                # Separar os participantes filtrados por tipo
+                mentores = [p for p in pessoas_filtradas if tipo_usuario[p] == "Mentor(a)"]
+                veteranos = [p for p in pessoas_filtradas if tipo_usuario[p] in ["Jovem-Semente Veterano", "Time Administrativo Semear"]]
+                outros = [p for p in pessoas_filtradas if tipo_usuario[p] not in ["Mentor(a)", "Jovem-Semente Veterano", "Time Administrativo Semear"]]
                 
-                # Retira 1 veterano, se houver espaço
-                if len(grupo) < max_pessoas_por_turma and veteranos:
-                    grupo.append(veteranos.pop(0))
+                # Ordenar cada grupo priorizando os com menos alocações
+                mentores.sort(key=lambda p: alocacoes[p])
+                veteranos.sort(key=lambda p: alocacoes[p])
+                outros.sort(key=lambda p: alocacoes[p])
                 
-                # Preenche a turma até o limite máximo, priorizando: mentores, veteranos e, por fim, outros
-                while len(grupo) < max_pessoas_por_turma:
-                    if outros:   
-                        grupo.append(outros.pop(0))
-                    elif veteranos:
+                # Enquanto for possível formar uma turma e não exceder o limite de turmas para o horário,
+                # forma um grupo garantindo os critérios mínimos
+                while len(mentores) >= 3 and len(veteranos) >= 1 and len(turmas[chave]) < max_turmas_por_horario:
+                    grupo = []
+                    # Retira 3 mentores (sempre verificando o limite de pessoas)
+                    for _ in range(3):
+                        if len(grupo) < max_pessoas_por_turma and mentores:
+                            grupo.append(mentores.pop(0))
+                    
+                    # Retira 1 veterano, se houver espaço
+                    if len(grupo) < max_pessoas_por_turma and veteranos:
                         grupo.append(veteranos.pop(0))
-                    elif mentores:
-                        grupo.append(mentores.pop(0))
+                    
+                    # Preenche a turma até o limite máximo, priorizando: mentores, veteranos e, por fim, outros
+                    while len(grupo) < max_pessoas_por_turma:
+                        if outros:   
+                            grupo.append(outros.pop(0))
+                        elif veteranos:
+                            grupo.append(veteranos.pop(0))
+                        elif mentores:
+                            grupo.append(mentores.pop(0))
+                        else:
+                            break
+                    
+                    # Se a turma atingir o tamanho mínimo exigido, a adiciona e atualiza as alocações
+                    if len(grupo) >= min_pessoas_por_turma:
+                        turmas[chave].append(grupo)
+                        for p in grupo:
+                            alocacoes[p] += 1
+                            print(f"Alocando {p} em {chave}")
                     else:
+                        # Caso não seja possível formar uma turma com o mínimo exigido, interrompe tentativas para este horário
                         break
-                
-                # Se a turma atingir o tamanho mínimo exigido, a adiciona e atualiza as alocações
-                if len(grupo) >= min_pessoas_por_turma:
+            else:
+                # Se não usar tipo_usuario, apenas forma turmas com base na disponibilidade e limites
+                while len(pessoas_filtradas) >= min_pessoas_por_turma and len(turmas[chave]) < max_turmas_por_horario:
+                    grupo = pessoas_filtradas[:max_pessoas_por_turma]
+                    pessoas_filtradas = pessoas_filtradas[max_pessoas_por_turma:]
                     turmas[chave].append(grupo)
                     for p in grupo:
                         alocacoes[p] += 1
                         print(f"Alocando {p} em {chave}")
-                else:
-                    # Caso não seja possível formar uma turma com o mínimo exigido, interrompe tentativas para este horário
-                    break
 
     # Alocação para "Duas dinâmicas seguidas no mesmo dia"
     if preferencia_frequencia:
