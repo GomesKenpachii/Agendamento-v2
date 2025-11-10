@@ -10,7 +10,7 @@ if file_path is not None:
 
     st.title("Configuração do agendamento")
 
-    # Obter os horários selecionados
+    # Obter os horários selecionados (checkboxes) — elas agora significam "BLOQUEAR este slot"
     datas_disponiveis = list(disponibilidade_pessoas.keys())
     horarios_selecionados = disponibilidade(datas_disponiveis, segundas_chaves)
 
@@ -18,8 +18,28 @@ if file_path is not None:
         # Definir o número máximo de pessoas por turma
         max_pessoas_por_turma = st.number_input("Número máximo de pessoas por turma", min_value=1, value=20)
 
-        # Definir o número máximo de turmas por horário
-        max_turmas_por_horario = st.number_input("Número máximo de turmas por horário", min_value=1, value=1)
+        # Definir o número máximo de turmas por horário (global)
+        max_turmas_por_horario = st.number_input("Número máximo de turmas por horário (global)", min_value=1, value=1)
+
+        # Escolher modo de limite: Global ou Por horário
+        modo_limite = st.radio("Modo de limite de turmas:", ("Global", "Por horário"))
+
+        # -- NOVO: preparar cópia dos horários iniciais para permitir definir per-slot sempre --
+        # Faz uma cópia dos slots existentes (antes de aplicar bloqueios)
+        all_slots = {dia: list(horarios.keys()) for dia, horarios in disponibilidade_pessoas.items()}
+
+        # Se modo "Por horário", permitir definir número de turmas por cada dia-horário (usa all_slots)
+        per_slot_max = None
+        if modo_limite == "Por horário":
+            per_slot_max = {}
+            st.markdown("Defina o número máximo de turmas por cada dia/horário:")
+            for dia, horarios in all_slots.items():
+                with st.expander(dia, expanded=False):
+                    for horario in horarios:
+                        key_name = f"slot_{dia}_{horario}"
+                        per_slot_max[f"{dia} - {horario}"] = st.number_input(
+                            f"{horario}", min_value=0, value=int(max_turmas_por_horario), key=key_name
+                        )
 
         # Definir a quantidade mínima de pessoas por turma
         min_pessoas_por_turma = st.number_input("Quantidade mínima de pessoas por turma", min_value=1, value=15)
@@ -36,19 +56,23 @@ if file_path is not None:
         # Checkbox para usar tipo_usuario
         usar_tipo_usuario = st.checkbox("Usar tipo de usuário")
 
-        for dia, horarios in horarios_selecionados.items():
-            if dia in disponibilidade_pessoas:
-                for horario in horarios:
-                    if horario in disponibilidade_pessoas[dia]:
-                        # Remove o horário do dia na disponibilidade_pessoas
+        # --- Aplicar BLOQUEIO: checboxes significam "não permitir agendamento" ---
+        # horarios_selecionados agora é o mapeamento dia -> [horarios marcados] que serão bloqueados.
+        bloqueados = horarios_selecionados  # nome semântico
+
+        # Remover (bloquear) somente os slots marcados nas checkboxes
+        for dia in list(disponibilidade_pessoas.keys()):
+            # se dia tem bloqueios, aplica; caso contrário, mantém todos os horários
+            bloqueios_do_dia = set(bloqueados.get(dia, []))
+            if bloqueios_do_dia:
+                for horario in list(disponibilidade_pessoas[dia].keys()):
+                    if horario in bloqueios_do_dia:
                         del disponibilidade_pessoas[dia][horario]
-                
-                # Se o dia não tiver mais horários, pode remover o dia da disponibilidade
-                if not disponibilidade_pessoas[dia]:
+                # Se o dia não tiver mais horários após o bloqueio, remover o dia
+                if not disponibilidade_pessoas.get(dia):
                     del disponibilidade_pessoas[dia]
 
-        # Criar turmas
-        print("Chamando criar_turmas...")
+        # Criar turmas (passa per_slot_max; pode ser None)
         turmas, jovens_nao_alocados, pessoas_disponiveis = criar_turmas(
             disponibilidade_pessoas, 
             max_pessoas_por_turma, 
@@ -58,7 +82,8 @@ if file_path is not None:
             max_pareamentos_individual, 
             preferencia_turno if usar_preferencia_turno else None, 
             preferencia_frequencia if usar_preferencia_frequencia else None,
-            tipo_usuario if usar_tipo_usuario else None
+            tipo_usuario if usar_tipo_usuario else None,
+            per_slot_max  # <-- novo argumento (pode ser None)
         )
 
         # Montar DataFrame com os agendamentos
@@ -68,7 +93,6 @@ if file_path is not None:
         total_jovens = len(nomes_unicos)
         total_jovens_alocados = total_jovens - len(jovens_nao_alocados)
         total_jovens_nao_alocados = len(jovens_nao_alocados)
-        total_turmas_agendadas = sum(len(turma) for turma in turmas.values())
 
         st.title("Turmas Criadas")
 
@@ -78,7 +102,7 @@ if file_path is not None:
         st.write(f"Total de jovens: {total_jovens}")
         st.write(f"Total de jovens alocados: {total_jovens_alocados}")
         st.write(f"Total de jovens não alocados: {total_jovens_nao_alocados}")
-        st.write(f"Total de turmas agendadas: {total_turmas_agendadas}")
+        st.write(f"Total de turmas agendadas: {turmas.__len__()}")
         
     else:
         st.write("Nenhum horário selecionado.")
